@@ -99,9 +99,14 @@ TEST(NanopbTest, MaxFields) {
     person.email[sizeof(person.email) - 1] = '\0';
     
     person.phones_count = 10;  // Max count from .options file
+    const demo_Person_PhoneType types[] = {
+        demo_Person_PhoneType_MOBILE,
+        demo_Person_PhoneType_HOME,
+        demo_Person_PhoneType_WORK
+    };
     for (size_t i = 0; i < person.phones_count; i++) {
         snprintf(person.phones[i].number, sizeof(person.phones[i].number), "555-%04zu", i);
-        person.phones[i].type = (demo_Person_PhoneType)(i % 3);
+        person.phones[i].type = types[i % 3];
     }
     
     // Encode
