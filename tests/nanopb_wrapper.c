@@ -18,6 +18,9 @@ typedef struct {
     } phones[10];
 } demo_Person_nanopb;
 
+// Alias for benchmarking
+typedef demo_Person_nanopb nanopb_Person;
+
 extern "C" bool nanopb_encode_person(const demo_Person_nanopb* person_wrapper, uint8_t* buffer, size_t buffer_size, size_t* bytes_written) {
     // Convert wrapper to real nanopb struct
     demo_Person person = demo_Person_init_zero;
@@ -60,4 +63,13 @@ extern "C" bool nanopb_decode_person(const uint8_t* buffer, size_t size, demo_Pe
     }
     
     return status;
+}
+
+// Aliases for comparison benchmark
+extern "C" bool nanopb_encode_msg(const nanopb_Person* person, uint8_t* buffer, size_t buffer_size, size_t* bytes_written) {
+    return nanopb_encode_person(person, buffer, buffer_size, bytes_written);
+}
+
+extern "C" bool nanopb_decode_msg(const uint8_t* buffer, size_t size, nanopb_Person* person) {
+    return nanopb_decode_person(buffer, size, person);
 }
