@@ -7,13 +7,50 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-# Fetch upb (lightweight protobuf implementation)
+# Fetch protobuf (which includes upb)
 FetchContent_Declare(
-  upb
-  GIT_REPOSITORY https://github.com/protocolbuffers/upb.git
-  GIT_TAG main
+  protobuf
+  GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
+  GIT_TAG v25.1
 )
-set(UPB_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_CONFORMANCE OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(protobuf_MSVC_STATIC_RUNTIME OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_PROTOC_BINARIES ON CACHE BOOL "" FORCE)
+
+# Make protobuf available
+FetchContent_GetProperties(protobuf)
+if(NOT protobuf_POPULATED)
+  FetchContent_Populate(protobuf)
+  # Add protobuf to the build
+  add_subdirectory(${protobuf_SOURCE_DIR} ${protobuf_BINARY_DIR} EXCLUDE_FROM_ALL)
+  
+  # Manually add protoc-gen-upb as a target since protobuf's CMake doesn't export it
+  # This is a workaround for the lack of CMake support for upb generators
+  add_executable(protoc-gen-upb
+    ${protobuf_SOURCE_DIR}/upb_generator/protoc-gen-upb.cc
+    ${protobuf_SOURCE_DIR}/upb_generator/code_generator_request.c
+    ${protobuf_SOURCE_DIR}/upb_generator/common.cc
+    ${protobuf_SOURCE_DIR}/upb_generator/file_layout.cc
+    ${protobuf_SOURCE_DIR}/upb_generator/keywords.cc
+    ${protobuf_SOURCE_DIR}/upb_generator/names.cc
+    ${protobuf_SOURCE_DIR}/upb_generator/subprocess.cc
+  )
+  target_link_libraries(protoc-gen-upb PRIVATE 
+    libprotoc 
+    libprotobuf
+    upb_base_lib
+    upb_mem_lib  
+    upb_message_lib
+    upb_mini_descriptor_lib
+    upb_mini_table_lib
+  )
+  target_include_directories(protoc-gen-upb PRIVATE 
+    ${protobuf_SOURCE_DIR}
+    ${protobuf_SOURCE_DIR}/upb
+  )
+endif()
 
 # Fetch nanopb
 FetchContent_Declare(
@@ -40,7 +77,7 @@ set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(upb nanopb googletest benchmark)
+FetchContent_MakeAvailable(nanopb googletest benchmark)
 
 enable_testing()
 
@@ -73,28 +110,21 @@ add_custom_command(
   COMMENT "Generating nanopb files"
 )
 
-# Generate upb files  
+# Generate upb files using protobuf's upb plugin
 set(UPB_OUT_DIR ${CMAKE_BINARY_DIR}/generated/upb)
 file(MAKE_DIRECTORY ${UPB_OUT_DIR})
 
-# UPB uses protoc plugins from the upb project
-# We'll use upbc (upb compiler) which is built as part of upb
-# For now, we'll use a simpler approach with manual file generation
+# Protobuf v25+ includes upb code generator
+# We'll use protoc with --upb_out
 add_custom_command(
   OUTPUT ${UPB_OUT_DIR}/person.upb.h ${UPB_OUT_DIR}/person.upb.c
-  COMMAND ${CMAKE_COMMAND} -E echo "Generating UPB files..."
   COMMAND ${PROTOC}
     --plugin=protoc-gen-upb=$<TARGET_FILE:protoc-gen-upb>
     --upb_out=${UPB_OUT_DIR}
     -I${CMAKE_SOURCE_DIR}/proto
     ${PROTO_FILE}
   DEPENDS ${PROTO_FILE} protoc-gen-upb
-  COMMENT "Generating upb files"
-)
-
-# Custom target to track upb code generation
-add_custom_target(upb_generator ALL
-  DEPENDS ${UPB_OUT_DIR}/person.upb.h ${UPB_OUT_DIR}/person.upb.c
+  COMMENT "Generating upb files with protoc-gen-upb"
 )
 
 # Nanopb Example
@@ -115,11 +145,13 @@ add_executable(upb_demo
 )
 target_include_directories(upb_demo PRIVATE 
   ${UPB_OUT_DIR}
-  ${upb_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}/upb
 )
 target_link_libraries(upb_demo PRIVATE 
-  upb
-  port
+  upb_base_lib
+  upb_mem_lib
+  upb_message_lib
 )
 
 # Tests
@@ -143,11 +175,13 @@ add_executable(upb_test
 )
 target_include_directories(upb_test PRIVATE 
   ${UPB_OUT_DIR}
-  ${upb_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}/upb
 )
 target_link_libraries(upb_test PRIVATE 
-  upb
-  port
+  upb_base_lib
+  upb_mem_lib
+  upb_message_lib
   gtest
   gtest_main
 )
@@ -163,12 +197,14 @@ target_include_directories(comparison_test PRIVATE
   ${NANOPB_OUT_DIR}
   ${UPB_OUT_DIR}
   ${nanopb_SOURCE_DIR}
-  ${upb_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}/upb
 )
 target_link_libraries(comparison_test PRIVATE 
   protobuf-nanopb-static
-  upb
-  port
+  upb_base_lib
+  upb_mem_lib
+  upb_message_lib
   gtest
   gtest_main
 )
@@ -193,11 +229,13 @@ add_executable(upb_benchmark
 )
 target_include_directories(upb_benchmark PRIVATE 
   ${UPB_OUT_DIR}
-  ${upb_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}/upb
 )
 target_link_libraries(upb_benchmark PRIVATE 
-  upb
-  port
+  upb_base_lib
+  upb_mem_lib
+  upb_message_lib
   benchmark::benchmark
 )
 
@@ -211,12 +249,14 @@ target_include_directories(comparison_benchmark PRIVATE
   ${NANOPB_OUT_DIR}
   ${UPB_OUT_DIR}
   ${nanopb_SOURCE_DIR}
-  ${upb_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}
+  ${protobuf_SOURCE_DIR}/upb
 )
 target_link_libraries(comparison_benchmark PRIVATE 
   protobuf-nanopb-static
-  upb
-  port
+  upb_base_lib
+  upb_mem_lib
+  upb_message_lib
   benchmark::benchmark
 )
 
