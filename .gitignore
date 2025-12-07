@@ -32,8 +32,11 @@ generated/
 *.app
 upb_demo
 nanopb_demo
+nanopb_test
+nanopb_benchmark
 comparison_test
 comparison_benchmark
+*.stripped
 
 # IDE and Editor files
 .vscode/
