@@ -1,0 +1,5 @@
+demo.Person.name max_size:64
+demo.Person.email max_size:64
+demo.Person.PhoneNumber.number max_size:32
+demo.Person.phones max_count:10
+demo.AddressBook.people max_count:100

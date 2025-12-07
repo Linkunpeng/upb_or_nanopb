@@ -1,0 +1,12 @@
+# Nanopb options for service messages
+
+# Global options
+* proto3_singular_msgs:true
+
+# AddPersonResponse
+demo.AddPersonResponse.message max_size:128
+
+# ListPersonsResponse 
+demo.ListPersonsResponse.persons max_count:10
+
+

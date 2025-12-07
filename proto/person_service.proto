@@ -1,0 +1,38 @@
+syntax = "proto2";  // Using proto2 for better nanopb compatibility
+
+package demo;
+
+import "person.proto";
+
+// Request to get a person by ID
+message GetPersonRequest {
+  required int32 id = 1;
+}
+
+// Response containing a person
+message GetPersonResponse {
+  optional Person person = 1;
+  optional bool found = 2;
+}
+
+// Request to add a person
+message AddPersonRequest {
+  required Person person = 1;
+}
+
+// Response for add person
+message AddPersonResponse {
+  required bool success = 1;
+  required string message = 2;
+}
+
+// Request to list all persons
+message ListPersonsRequest {
+  optional int32 max_results = 1;  // Maximum number of results to return
+}
+
+// Response with list of persons
+message ListPersonsResponse {
+  repeated Person persons = 1;
+  required int32 total_count = 2;
+}
