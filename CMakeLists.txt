@@ -7,18 +7,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
-# Fetch upb
-FetchContent_Declare(
-  upb
-  GIT_REPOSITORY https://github.com/protocolbuffers/upb.git
-  GIT_TAG main
-)
-
 # Fetch nanopb
 FetchContent_Declare(
   nanopb
   GIT_REPOSITORY https://github.com/nanopb/nanopb.git
-  GIT_TAG master
+  GIT_TAG 0.4.8
 )
 
 # Fetch Google Test
@@ -39,7 +32,7 @@ set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(upb nanopb googletest benchmark)
+FetchContent_MakeAvailable(nanopb googletest benchmark)
 
 enable_testing()
 
@@ -51,36 +44,26 @@ endif()
 
 # Proto file
 set(PROTO_FILE ${CMAKE_SOURCE_DIR}/proto/person.proto)
-
-# Generate upb files
-set(UPB_OUT_DIR ${CMAKE_BINARY_DIR}/generated/upb)
-file(MAKE_DIRECTORY ${UPB_OUT_DIR})
-
-add_custom_command(
-  OUTPUT ${UPB_OUT_DIR}/person.upb.h ${UPB_OUT_DIR}/person.upb.c
-  COMMAND ${PROTOC} --upb_out=${UPB_OUT_DIR} --plugin=protoc-gen-upb=$<TARGET_FILE:protoc-gen-upb> -I${CMAKE_SOURCE_DIR}/proto ${PROTO_FILE}
-  DEPENDS ${PROTO_FILE} protoc-gen-upb
-  COMMENT "Generating upb files"
-)
+set(PROTO_OPTIONS ${CMAKE_SOURCE_DIR}/proto/person.options)
 
 # Generate nanopb files
 set(NANOPB_OUT_DIR ${CMAKE_BINARY_DIR}/generated/nanopb)
 file(MAKE_DIRECTORY ${NANOPB_OUT_DIR})
 
+set(NANOPB_GENERATOR ${nanopb_SOURCE_DIR}/generator/nanopb_generator.py)
+set(NANOPB_PLUGIN ${nanopb_SOURCE_DIR}/generator/protoc-gen-nanopb)
+
 add_custom_command(
   OUTPUT ${NANOPB_OUT_DIR}/person.pb.h ${NANOPB_OUT_DIR}/person.pb.c
-  COMMAND ${PROTOC} --nanopb_out=${NANOPB_OUT_DIR} --plugin=protoc-gen-nanopb=$<TARGET_FILE:protoc_nanopb_plugin> -I${CMAKE_SOURCE_DIR}/proto ${PROTO_FILE}
-  DEPENDS ${PROTO_FILE} protoc_nanopb_plugin
+  COMMAND ${PROTOC} 
+    --plugin=protoc-gen-nanopb=${NANOPB_PLUGIN}
+    --nanopb_opt=-f${CMAKE_SOURCE_DIR}/proto/person.options
+    --nanopb_out=${NANOPB_OUT_DIR}
+    -I${CMAKE_SOURCE_DIR}/proto 
+    ${PROTO_FILE}
+  DEPENDS ${PROTO_FILE} ${PROTO_OPTIONS}
   COMMENT "Generating nanopb files"
 )
-
-# UPB Example
-add_executable(upb_demo
-  src/upb_example/main.c
-  ${UPB_OUT_DIR}/person.upb.c
-)
-target_include_directories(upb_demo PRIVATE ${UPB_OUT_DIR})
-target_link_libraries(upb_demo PRIVATE upb)
 
 # Nanopb Example
 add_executable(nanopb_demo
@@ -93,49 +76,41 @@ target_include_directories(nanopb_demo PRIVATE
 )
 target_link_libraries(nanopb_demo PRIVATE protobuf-nanopb-static)
 
-# Benchmarks
-add_executable(comparison_benchmark
-  benchmarks/benchmark.cpp
-  ${UPB_OUT_DIR}/person.upb.c
-  ${NANOPB_OUT_DIR}/person.pb.c
-)
-target_include_directories(comparison_benchmark PRIVATE 
-  ${UPB_OUT_DIR}
-  ${NANOPB_OUT_DIR}
-  ${nanopb_SOURCE_DIR}
-)
-target_link_libraries(comparison_benchmark PRIVATE 
-  upb
-  protobuf-nanopb-static
-  benchmark::benchmark
-)
-
 # Tests
-add_executable(comparison_test
-  tests/test.cpp
-  ${UPB_OUT_DIR}/person.upb.c
+add_executable(nanopb_test
+  tests/nanopb_test.cpp
   ${NANOPB_OUT_DIR}/person.pb.c
 )
-target_include_directories(comparison_test PRIVATE 
-  ${UPB_OUT_DIR}
+target_include_directories(nanopb_test PRIVATE 
   ${NANOPB_OUT_DIR}
   ${nanopb_SOURCE_DIR}
 )
-target_link_libraries(comparison_test PRIVATE 
-  upb
+target_link_libraries(nanopb_test PRIVATE 
   protobuf-nanopb-static
   gtest
   gtest_main
 )
 
-add_test(NAME comparison_test COMMAND comparison_test)
+# Benchmarks
+add_executable(nanopb_benchmark
+  benchmarks/nanopb_benchmark.cpp
+  ${NANOPB_OUT_DIR}/person.pb.c
+)
+target_include_directories(nanopb_benchmark PRIVATE 
+  ${NANOPB_OUT_DIR}
+  ${nanopb_SOURCE_DIR}
+)
+target_link_libraries(nanopb_benchmark PRIVATE 
+  protobuf-nanopb-static
+  benchmark::benchmark
+)
+
+add_test(NAME nanopb_test COMMAND nanopb_test)
 
 # Add custom target to show binary sizes
 add_custom_target(show_sizes
   COMMAND ${CMAKE_COMMAND} -E echo "Binary size comparison:"
-  COMMAND ${CMAKE_COMMAND} -E echo "UPB demo:"
-  COMMAND ls -lh $<TARGET_FILE:upb_demo>
   COMMAND ${CMAKE_COMMAND} -E echo "Nanopb demo:"
   COMMAND ls -lh $<TARGET_FILE:nanopb_demo>
-  DEPENDS upb_demo nanopb_demo
+  DEPENDS nanopb_demo
 )
