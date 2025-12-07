@@ -6,18 +6,22 @@
 #include "pb_decode.h"
 
 void create_sample_person(demo_Person* person) {
-    // Set basic fields
-    strcpy(person->name, "John Doe");
+    // Set basic fields - using strncpy for safety
+    strncpy(person->name, "John Doe", sizeof(person->name) - 1);
+    person->name[sizeof(person->name) - 1] = '\0';
     person->id = 12345;
-    strcpy(person->email, "john.doe@example.com");
+    strncpy(person->email, "john.doe@example.com", sizeof(person->email) - 1);
+    person->email[sizeof(person->email) - 1] = '\0';
     
     // Add phone numbers
     person->phones_count = 2;
     
-    strcpy(person->phones[0].number, "555-1234");
+    strncpy(person->phones[0].number, "555-1234", sizeof(person->phones[0].number) - 1);
+    person->phones[0].number[sizeof(person->phones[0].number) - 1] = '\0';
     person->phones[0].type = demo_Person_PhoneType_MOBILE;
     
-    strcpy(person->phones[1].number, "555-5678");
+    strncpy(person->phones[1].number, "555-5678", sizeof(person->phones[1].number) - 1);
+    person->phones[1].number[sizeof(person->phones[1].number) - 1] = '\0';
     person->phones[1].type = demo_Person_PhoneType_WORK;
 }
 

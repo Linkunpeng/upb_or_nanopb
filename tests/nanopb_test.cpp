@@ -11,9 +11,11 @@ extern "C" {
 // Test Nanopb encoding and decoding
 TEST(NanopbTest, BasicEncodeDecode) {
     demo_Person person = demo_Person_init_zero;
-    strcpy(person.name, "Bob");
+    strncpy(person.name, "Bob", sizeof(person.name) - 1);
+    person.name[sizeof(person.name) - 1] = '\0';
     person.id = 99;
-    strcpy(person.email, "bob@example.com");
+    strncpy(person.email, "bob@example.com", sizeof(person.email) - 1);
+    person.email[sizeof(person.email) - 1] = '\0';
     
     // Encode
     uint8_t buffer[256];
@@ -38,13 +40,16 @@ TEST(NanopbTest, BasicEncodeDecode) {
 
 TEST(NanopbTest, RepeatedFields) {
     demo_Person person = demo_Person_init_zero;
-    strcpy(person.name, "Charlie");
+    strncpy(person.name, "Charlie", sizeof(person.name) - 1);
+    person.name[sizeof(person.name) - 1] = '\0';
     person.id = 77;
     
     person.phones_count = 2;
-    strcpy(person.phones[0].number, "555-0000");
+    strncpy(person.phones[0].number, "555-0000", sizeof(person.phones[0].number) - 1);
+    person.phones[0].number[sizeof(person.phones[0].number) - 1] = '\0';
     person.phones[0].type = demo_Person_PhoneType_HOME;
-    strcpy(person.phones[1].number, "555-9999");
+    strncpy(person.phones[1].number, "555-9999", sizeof(person.phones[1].number) - 1);
+    person.phones[1].number[sizeof(person.phones[1].number) - 1] = '\0';
     person.phones[1].type = demo_Person_PhoneType_MOBILE;
     
     // Encode

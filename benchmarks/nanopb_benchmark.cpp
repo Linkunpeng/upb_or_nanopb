@@ -12,14 +12,18 @@ extern "C" {
 static void BM_Nanopb_Encode(benchmark::State& state) {
     for (auto _ : state) {
         demo_Person person = demo_Person_init_zero;
-        strcpy(person.name, "John Doe");
+        strncpy(person.name, "John Doe", sizeof(person.name) - 1);
+        person.name[sizeof(person.name) - 1] = '\0';
         person.id = 12345;
-        strcpy(person.email, "john.doe@example.com");
+        strncpy(person.email, "john.doe@example.com", sizeof(person.email) - 1);
+        person.email[sizeof(person.email) - 1] = '\0';
         
         person.phones_count = 2;
-        strcpy(person.phones[0].number, "555-1234");
+        strncpy(person.phones[0].number, "555-1234", sizeof(person.phones[0].number) - 1);
+        person.phones[0].number[sizeof(person.phones[0].number) - 1] = '\0';
         person.phones[0].type = demo_Person_PhoneType_MOBILE;
-        strcpy(person.phones[1].number, "555-5678");
+        strncpy(person.phones[1].number, "555-5678", sizeof(person.phones[1].number) - 1);
+        person.phones[1].number[sizeof(person.phones[1].number) - 1] = '\0';
         person.phones[1].type = demo_Person_PhoneType_WORK;
         
         uint8_t buffer[256];
@@ -34,14 +38,18 @@ BENCHMARK(BM_Nanopb_Encode);
 static void BM_Nanopb_Decode(benchmark::State& state) {
     // Pre-encode a message
     demo_Person person = demo_Person_init_zero;
-    strcpy(person.name, "John Doe");
+    strncpy(person.name, "John Doe", sizeof(person.name) - 1);
+    person.name[sizeof(person.name) - 1] = '\0';
     person.id = 12345;
-    strcpy(person.email, "john.doe@example.com");
+    strncpy(person.email, "john.doe@example.com", sizeof(person.email) - 1);
+    person.email[sizeof(person.email) - 1] = '\0';
     
     person.phones_count = 2;
-    strcpy(person.phones[0].number, "555-1234");
+    strncpy(person.phones[0].number, "555-1234", sizeof(person.phones[0].number) - 1);
+    person.phones[0].number[sizeof(person.phones[0].number) - 1] = '\0';
     person.phones[0].type = demo_Person_PhoneType_MOBILE;
-    strcpy(person.phones[1].number, "555-5678");
+    strncpy(person.phones[1].number, "555-5678", sizeof(person.phones[1].number) - 1);
+    person.phones[1].number[sizeof(person.phones[1].number) - 1] = '\0';
     person.phones[1].type = demo_Person_PhoneType_WORK;
     
     uint8_t buffer[256];
@@ -63,14 +71,18 @@ static void BM_Nanopb_RoundTrip(benchmark::State& state) {
     for (auto _ : state) {
         // Encode
         demo_Person person = demo_Person_init_zero;
-        strcpy(person.name, "John Doe");
+        strncpy(person.name, "John Doe", sizeof(person.name) - 1);
+        person.name[sizeof(person.name) - 1] = '\0';
         person.id = 12345;
-        strcpy(person.email, "john.doe@example.com");
+        strncpy(person.email, "john.doe@example.com", sizeof(person.email) - 1);
+        person.email[sizeof(person.email) - 1] = '\0';
         
         person.phones_count = 2;
-        strcpy(person.phones[0].number, "555-1234");
+        strncpy(person.phones[0].number, "555-1234", sizeof(person.phones[0].number) - 1);
+        person.phones[0].number[sizeof(person.phones[0].number) - 1] = '\0';
         person.phones[0].type = demo_Person_PhoneType_MOBILE;
-        strcpy(person.phones[1].number, "555-5678");
+        strncpy(person.phones[1].number, "555-5678", sizeof(person.phones[1].number) - 1);
+        person.phones[1].number[sizeof(person.phones[1].number) - 1] = '\0';
         person.phones[1].type = demo_Person_PhoneType_WORK;
         
         uint8_t buffer[256];
@@ -90,7 +102,8 @@ BENCHMARK(BM_Nanopb_RoundTrip);
 static void BM_Nanopb_Encode_Small(benchmark::State& state) {
     for (auto _ : state) {
         demo_Person person = demo_Person_init_zero;
-        strcpy(person.name, "John");
+        strncpy(person.name, "John", sizeof(person.name) - 1);
+        person.name[sizeof(person.name) - 1] = '\0';
         person.id = 42;
         
         uint8_t buffer[256];
@@ -105,9 +118,11 @@ BENCHMARK(BM_Nanopb_Encode_Small);
 static void BM_Nanopb_Encode_Large(benchmark::State& state) {
     for (auto _ : state) {
         demo_Person person = demo_Person_init_zero;
-        strcpy(person.name, "John Doe with a very long name");
+        strncpy(person.name, "John Doe with a very long name", sizeof(person.name) - 1);
+        person.name[sizeof(person.name) - 1] = '\0';
         person.id = 12345;
-        strcpy(person.email, "john.doe.very.long.email@example.com");
+        strncpy(person.email, "john.doe.very.long.email@example.com", sizeof(person.email) - 1);
+        person.email[sizeof(person.email) - 1] = '\0';
         
         person.phones_count = 10;  // Max count
         for (size_t i = 0; i < person.phones_count; i++) {
