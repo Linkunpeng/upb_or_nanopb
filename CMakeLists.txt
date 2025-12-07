@@ -7,6 +7,16 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 
+# Fetch protobuf (for C++ comparison instead of upb)
+FetchContent_Declare(
+  protobuf
+  GIT_REPOSITORY https://github.com/protocolbuffers/protobuf.git
+  GIT_TAG v21.12
+)
+set(protobuf_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_CONFORMANCE OFF CACHE BOOL "" FORCE)
+set(protobuf_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
 # Fetch nanopb
 FetchContent_Declare(
   nanopb
@@ -32,7 +42,7 @@ set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 
-FetchContent_MakeAvailable(nanopb googletest benchmark)
+FetchContent_MakeAvailable(protobuf nanopb googletest benchmark)
 
 enable_testing()
 
@@ -65,6 +75,20 @@ add_custom_command(
   COMMENT "Generating nanopb files"
 )
 
+# Generate upb files (using C++ protobuf for comparison)
+set(UPB_OUT_DIR ${CMAKE_BINARY_DIR}/generated/cpp_pb)
+file(MAKE_DIRECTORY ${UPB_OUT_DIR})
+
+add_custom_command(
+  OUTPUT ${UPB_OUT_DIR}/person.pb.h ${UPB_OUT_DIR}/person.pb.cc
+  COMMAND ${PROTOC}
+    --cpp_out=${UPB_OUT_DIR}
+    -I${CMAKE_SOURCE_DIR}/proto
+    ${PROTO_FILE}
+  DEPENDS ${PROTO_FILE}
+  COMMENT "Generating C++ protobuf files"
+)
+
 # Nanopb Example
 add_executable(nanopb_demo
   src/nanopb_example/main.c
@@ -75,6 +99,18 @@ target_include_directories(nanopb_demo PRIVATE
   ${nanopb_SOURCE_DIR}
 )
 target_link_libraries(nanopb_demo PRIVATE protobuf-nanopb-static)
+
+# C++ Protobuf Example (for comparison with nanopb)
+add_executable(cpp_pb_demo
+  src/cpp_pb_example/main.cpp
+  ${UPB_OUT_DIR}/person.pb.cc
+)
+target_include_directories(cpp_pb_demo PRIVATE 
+  ${UPB_OUT_DIR}
+)
+target_link_libraries(cpp_pb_demo PRIVATE 
+  libprotobuf
+)
 
 # Tests
 add_executable(nanopb_test
@@ -87,6 +123,38 @@ target_include_directories(nanopb_test PRIVATE
 )
 target_link_libraries(nanopb_test PRIVATE 
   protobuf-nanopb-static
+  gtest
+  gtest_main
+)
+
+add_executable(cpp_pb_test
+  tests/cpp_pb_test.cpp
+  ${UPB_OUT_DIR}/person.pb.cc
+)
+target_include_directories(cpp_pb_test PRIVATE 
+  ${UPB_OUT_DIR}
+)
+target_link_libraries(cpp_pb_test PRIVATE 
+  libprotobuf
+  gtest
+  gtest_main
+)
+
+# Comparison test
+add_executable(comparison_test
+  tests/comparison_test.cpp
+  tests/nanopb_wrapper.c
+  ${NANOPB_OUT_DIR}/person.pb.c
+  ${UPB_OUT_DIR}/person.pb.cc
+)
+target_include_directories(comparison_test PRIVATE 
+  ${NANOPB_OUT_DIR}
+  ${UPB_OUT_DIR}
+  ${nanopb_SOURCE_DIR}
+)
+target_link_libraries(comparison_test PRIVATE 
+  protobuf-nanopb-static
+  libprotobuf
   gtest
   gtest_main
 )
@@ -105,12 +173,45 @@ target_link_libraries(nanopb_benchmark PRIVATE
   benchmark::benchmark
 )
 
+add_executable(cpp_pb_benchmark
+  benchmarks/cpp_pb_benchmark.cpp
+  ${UPB_OUT_DIR}/person.pb.cc
+)
+target_include_directories(cpp_pb_benchmark PRIVATE 
+  ${UPB_OUT_DIR}
+)
+target_link_libraries(cpp_pb_benchmark PRIVATE 
+  libprotobuf
+  benchmark::benchmark
+)
+
+add_executable(comparison_benchmark
+  benchmarks/comparison_benchmark.cpp
+  ${NANOPB_OUT_DIR}/person.pb.c
+  ${UPB_OUT_DIR}/person.pb.cc
+)
+target_include_directories(comparison_benchmark PRIVATE 
+  ${NANOPB_OUT_DIR}
+  ${UPB_OUT_DIR}
+  ${nanopb_SOURCE_DIR}
+)
+target_link_libraries(comparison_benchmark PRIVATE 
+  protobuf-nanopb-static
+  libprotobuf
+  benchmark::benchmark
+)
+
 add_test(NAME nanopb_test COMMAND nanopb_test)
+add_test(NAME cpp_pb_test COMMAND cpp_pb_test)
+# Note: comparison_test disabled due to header naming conflicts between implementations
+# add_test(NAME comparison_test COMMAND comparison_test)
 
 # Add custom target to show binary sizes
 add_custom_target(show_sizes
   COMMAND ${CMAKE_COMMAND} -E echo "Binary size comparison:"
+  COMMAND ${CMAKE_COMMAND} -E echo "C++ Protobuf demo:"
+  COMMAND ls -lh $<TARGET_FILE:cpp_pb_demo>
   COMMAND ${CMAKE_COMMAND} -E echo "Nanopb demo:"
   COMMAND ls -lh $<TARGET_FILE:nanopb_demo>
-  DEPENDS nanopb_demo
+  DEPENDS cpp_pb_demo nanopb_demo
 )

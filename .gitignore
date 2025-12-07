@@ -30,7 +30,9 @@ generated/
 *.exe
 *.out
 *.app
-upb_demo
+cpp_pb_demo
+cpp_pb_test
+cpp_pb_benchmark
 nanopb_demo
 nanopb_test
 nanopb_benchmark
